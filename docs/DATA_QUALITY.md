@@ -1,100 +1,155 @@
 # Data Quality
 
-This warehouse was built from a real export, and the source had **genuine data-quality issues**.
-This document records every issue found, how it was detected, and how the pipeline handles it.
-All counts are verified against the loaded data.
+**Scope:** the quality framework — validation rules, referential integrity, duplicate detection,
+NULL strategy, business rules, profiling results, metrics, and known limitations. How these
+checks run in the pipeline: [ETL.md](ETL.md).
 
 ---
 
-## Issues found (verified counts)
+## 1. Quality Framework
 
-### 1. Missing foreign keys — trips without an asset assignment
+Quality is enforced at three boundaries:
 
-| Issue | Count | % of table |
+```mermaid
+flowchart LR
+    A["BRONZE<br/>row counts · duplicates"] -->|"gate 1"| B["SILVER<br/>types · NULLs · FKs · booleans"]
+    B -->|"gate 2"| C["GOLD<br/>FK constraints · orphan check"]
+    C -->|"gate 3"| D["REPORT<br/>KPI cross-validation vs source CSVs"]
+```
+
+Every gate produces auditable evidence in `gold.pipeline_audit`. Nothing is asserted — everything
+is counted.
+
+---
+
+## 2. Validation Rules
+
+| Rule | Applies to | Enforcement |
 |---|---|---|
-| `trips.driver_id` empty | 1,714 | 2.0% |
-| `trips.truck_id` empty | 1,672 | 2.0% |
-| `trips.trailer_id` empty | 1,680 | 2.0% |
+| Row count matches source | all 14 bronze tables | audit row per table after load |
+| No duplicate natural keys | loads, trips, events, fuel, drivers, trucks | PK-duplicate scan pre-build; PK constraints post-build |
+| Required keys never empty | loads.customer_id, loads.route_id, trips.load_id, events.* | FK scan — **all 0 missing** |
+| Empty strings are NULL | every string column | `NULLIF(LTRIM(RTRIM(col)), '')` |
+| Booleans are BIT | on_time_flag, at_fault_flag, injury_flag, preventable_flag | explicit CASE conversion |
+| Dates parse or become NULL | every date column | `TRY_CONVERT(DATE)` |
+| Facts reference existing dims | every fact in gold | FK constraints + 8-point orphan check |
+| Numeric measures cast safely | every DECIMAL/INT column | `TRY_CONVERT` |
 
-**Detection:** `WHERE driver_id = '' OR driver_id IS NULL` against bronze.
+---
 
-**Handling:** These trips are **real, completed trips** (trip_status = 'Completed') — they must
-not be dropped. Silver maps them to the `'-1'` Unknown surrogate; gold joins resolve to the
-"Unknown Driver/Truck/Trailer" dimension rows. Analytics that need asset attribution filter
-`WHERE driver_sk > 0` explicitly.
+## 3. Referential Integrity
 
-### 2. Missing foreign keys — fuel purchases
+The source export is a normalized OLTP model, and **most FKs are clean**. The pipeline verifies
+every one rather than assuming it:
 
-| Issue | Count |
+| Fact → parent | Rows referencing missing parent | Handling |
+|---|---|---|
+| trips → loads | **0** | — |
+| trips → drivers | **1,714** (2.0%) | `-1` Unknown driver |
+| trips → trucks | **1,672** (2.0%) | `-1` Unknown truck |
+| trips → trailers | **1,680** (2.0%) | `-1` Unknown trailer |
+| fuel_purchases → trips | **0** | — |
+| fuel_purchases → trucks | **3,880** | `-1` Unknown truck |
+| fuel_purchases → drivers | **3,988** | `-1` Unknown driver |
+| delivery_events → trips/loads/facilities | **0 / 0 / 0** | — |
+| maintenance → trucks | **0** | — |
+| incidents → trips/trucks/drivers | **0** | — |
+
+**Gold-layer result: 0 orphaned references across all 8 checks.**
+
+> ✅ **Why this matters:** those 1,672 "no truck" trips are completed trips that generated
+> revenue. Dropping them would understate revenue by roughly **$6M/year**. The warehouse keeps
+> them and makes the unassigned population explicit (`WHERE truck_sk > 0` to exclude).
+
+---
+
+## 4. Duplicate Detection
+
+| Table | Duplicate natural keys |
 |---|---|
-| `fuel_purchases.truck_id` empty | 3,880 |
-| `fuel_purchases.driver_id` empty | 3,988 |
+| loads (load_id) | 0 |
+| trips (trip_id) | 0 |
+| delivery_events (event_id) | 0 |
+| fuel_purchases (fuel_purchase_id) | 0 |
+| drivers (driver_id) | 0 |
+| trucks (truck_id) | 0 |
 
-**Detection:** empty-string scan on bronze.fuel_purchases.
-
-**Handling:** Same orphan-safe pattern — Unknown surrogates. Note these fuel rows still carry a
-valid `trip_id`, so they remain joinable to trip context.
-
-### 3. String booleans
-
-`on_time_flag`, `at_fault_flag`, `injury_flag`, `preventable_flag` arrive as `'True'/'False'`
-strings. **Handling:** converted to BIT in silver via explicit CASE — no implicit parsing.
-
-### 4. Empty strings vs NULL
-
-Many optional columns (termination_date, license_state, service_description, etc.) contain
-`''` rather than NULL. **Handling:** `NULLIF(LTRIM(RTRIM(col)), '')` normalizes every string
-column in silver.
-
-### 5. Whitespace
-
-Source text fields can carry leading/trailing spaces. **Handling:** `LTRIM`/`RTRIM` applied in
-silver on all text columns.
-
-### 6. Invalid dates / numbers
-
-Some values fail conversion (e.g. blank dates). **Handling:** all casts use `TRY_CONVERT` →
-NULL. Loads never fail; bad values are visible in quality reports.
-
-### 7. Duplicate keys
-
-**Detection:** PK-duplicate scan on loads, trips, events, fuel, drivers, trucks.
-
-**Result:** **0 duplicates** in every table — the source keys are clean, verified before the
-warehouse was built.
-
-### 8. Cross-field consistency — on_time_flag vs delay reasons
-
-Delivery events carry both an `on_time_flag` and, via trips, a `trip_status`. All trips are
-'Completed' in this export, so the on-time measure is the event flag alone — consistent and
-unambiguous.
+The check runs against bronze before any transformation, and PK constraints would reject
+duplicates in silver/gold if new ones appeared.
 
 ---
 
-## Quality checks embedded in the pipeline
+## 5. NULL Strategy
 
-| Check | Where | What it proves |
-|---|---|---|
-| Row-count audit per table | end of each layer script | bronze = source CSV counts exactly |
-| Orphan report (facts → dims) | end of 02_silver_layer.sql | lists every '-1' count per FK |
-| 8-point FK orphan check | end of 03_gold_layer.sql | 0 orphaned references in gold |
-| pipeline_audit table | all layers | 59 rows: every object, layer, count, status |
+| Pattern | Strategy |
+|---|---|
+| Missing *attribute* (e.g. termination_date) | NULL — correct: the driver is still employed |
+| Missing *identifier* (e.g. trip without truck) | `-1` Unknown surrogate — the row must survive |
+| Missing *measure* (e.g. blank revenue) | NULL — excluded from aggregations naturally |
+| Aggregate protection | `NULLIF(denominator, 0)` everywhere division is used |
 
-## Quality metrics (verified run)
+The rule: **attributes may be NULL, facts may not be dropped.** Unknown is a first-class value,
+not an error.
+
+---
+
+## 6. Business Rules
+
+| Rule | Definition |
+|---|---|
+| Gross revenue | `revenue + fuel_surcharge + accessorial_charges` (computed column) |
+| On-time delivery | delivery events only, `on_time_flag = 1` — pickups are tracked but not scored |
+| Utilization % | source `utilization_rate` (0–1 ratio) × 100 |
+| Revenue per mile | `gross_revenue / NULLIF(distance, 0)` |
+| Cost per mile | `maintenance cost / NULLIF(trip miles, 0)` |
+| Active assets | `is_active` computed from status/employment fields |
+
+Each rule is defined once in the gold layer and reused by every view — a KPI has exactly one
+definition (see [KPI.md](KPI.md)).
+
+---
+
+## 7. Data Profiling (verified)
 
 | Metric | Value |
 |---|---|
-| Bronze rows loaded | 549,706 (14 tables) |
+| Source rows loaded (bronze) | 549,706 across 14 tables |
 | Silver objects | 15 (7 dims + 8 facts) |
 | Gold objects | 30 (7 dims + 8 facts + 11 views + audit) |
-| Orphaned gold references | **0** |
 | Rows dropped by the pipeline | **0** |
+| Orphaned gold references | **0** |
 | Duplicate source keys | **0** |
-| Cross-validation vs source CSVs | **100% match on all KPIs** |
+| Trips missing driver / truck / trailer | 1,714 / 1,672 / 1,680 (→ Unknown) |
+| Fuel purchases missing truck / driver | 3,880 / 3,988 (→ Unknown) |
+| Cross-validation vs source CSVs | **100% KPI match** |
 
-## The honest framing
+---
 
-The dataset is realistic: 2% of trips have no asset assignment and 2% of fuel purchases lack
-truck/driver. A naive pipeline would either drop those rows (losing revenue facts) or silently
-join them to garbage. This warehouse **keeps every row** and makes the unassigned population
-explicit and filterable — which is exactly how production logistics data behaves.
+## 8. Known Limitations
+
+Honest boundaries of the current build:
+
+1. **SCD Type 1 only.** Dimensions hold the latest state; historical attribute changes (a driver
+   moving terminals) are not versioned yet. Planned: Type 2 for driver/truck — see
+   [STAR_SCHEMA.md](STAR_SCHEMA.md#6-slowly-changing-dimensions-scd).
+2. **No dedup across sources.** Duplicates are checked *within* each table; cross-table identity
+   resolution (e.g. the same facility listed twice) is not performed — the source defines the keys.
+3. **The 2% unassigned population is preserved but not repaired.** The warehouse cannot invent a
+   truck for a trip; it flags the gap. Closing it is a source-side (dispatch) fix.
+4. **`utilization_rate` can exceed 1.0** in the source (over-utilization). The view scales it to
+   % as-is; values above 100% are valid and meaningful.
+5. **Partial 2025 data** exists in the source (77 delivery events, 25k fuel gallons). Queries
+   should filter by year unless the full-year 2022–2024 window is intended.
+6. **No row-level security** — the semantic views are open to any warehouse login. Planned with
+   the multi-tenant roadmap ([ARCHITECTURE.md](ARCHITECTURE.md#6-scalability-path)).
+
+---
+
+<p align="center">
+  <b>Previous:</b> <a href="ETL.md">🔧 ETL</a> ·
+  <b>Next:</b> <a href="KPI.md">📏 KPI</a> ·
+  <b>Back to:</b> <a href="../README.md#documentation-hub">Documentation Hub</a>
+</p>
+<p align="center">
+  <b>Related:</b> <a href="KPI.md">📏 KPI definitions</a> · <a href="DATA_DICTIONARY.md">📚 Data dictionary</a>
+</p>
