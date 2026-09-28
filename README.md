@@ -8,9 +8,14 @@
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="MIT License" />
 </p>
 
-# Logistics Intelligence Platform 
+# Logistics Intelligence Platform
+
+> **Live Dashboard**  
+> [_Here_](https://4maxr.github.io/logistics-intelligence-platform/)
+> **Project in Website**  
+> [_Here_](https://mostafaalrouby.com/projects/logistics-intelligence-platform.html)
 > **Download the dataset from Kaggle:**  
-> [*Here*](https://www.kaggle.com/datasets/yogape/logistics-operations-database)
+> [_Here_](https://www.kaggle.com/datasets/yogape/logistics-operations-database)
 
 ## A data warehouse for a 120-truck logistics operation — built, executed, and verified on SQL Server.
 
@@ -62,24 +67,24 @@ them — until now.
 
 This project builds the **single source of truth** on SQL Server:
 
-| Stage | What it delivers |
-|---|---|
-| **Bronze** | All 14 source tables loaded raw and immutable — 549,706 rows, nothing lost |
-| **Silver** | Clean, typed, validated layer — 7 dimensions, 8 facts, **0 rows dropped** |
-| **Gold** | Star schema with surrogate keys and enforced referential integrity — **0 orphaned references** |
-| **Views** | 11 business views that answer management questions without writing joins |
+| Stage      | What it delivers                                                                               |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| **Bronze** | All 14 source tables loaded raw and immutable — 549,706 rows, nothing lost                     |
+| **Silver** | Clean, typed, validated layer — 7 dimensions, 8 facts, **0 rows dropped**                      |
+| **Gold**   | Star schema with surrogate keys and enforced referential integrity — **0 orphaned references** |
+| **Views**  | 11 business views that answer management questions without writing joins                       |
 
 **Headline results (verified):**
 
-| KPI | Value |
-|---|---|
-| Gross revenue (2022–2024) | **$298.6M** |
-| Trips / delivery events | **85,410 / 170,820** |
-| On-time delivery rate | **44.6%** |
-| Average fleet utilization | **83.0%** |
-| Fleet average MPG | **6.50** |
-| Fuel spend | **$95.6M** |
-| Safety claims | **$2.65M** |
+| KPI                       | Value                |
+| ------------------------- | -------------------- |
+| Gross revenue (2022–2024) | **$298.6M**          |
+| Trips / delivery events   | **85,410 / 170,820** |
+| On-time delivery rate     | **44.6%**            |
+| Average fleet utilization | **83.0%**            |
+| Fleet average MPG         | **6.50**             |
+| Fuel spend                | **$95.6M**           |
+| Safety claims             | **$2.65M**           |
 
 ---
 
@@ -87,7 +92,7 @@ This project builds the **single source of truth** on SQL Server:
 
 The company's data told individual stories but no shared one. Operations knew trucks ran late;
 finance knew lanes billed differently; maintenance knew which assets cost the most. Nobody could
-answer a cross-functional question — *"which of our top customers is served worst?"* — because it
+answer a cross-functional question — _"which of our top customers is served worst?"_ — because it
 required joining five tables that had never been modeled together.
 
 The cost of that gap is visible in the data: **only 44.6% of deliveries arrive on time**, and that
@@ -131,16 +136,16 @@ Full design rationale: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## Technology Stack
 
-| Component | Choice | Why |
-|---|---|---|
-| Warehouse engine | **Microsoft SQL Server 2025** | Full T-SQL feature set, FK enforcement, minimal-logging loads |
-| Language | **T-SQL** | The entire platform — load, transform, model, report — is one language |
-| Load mechanism | **BULK INSERT** | Raw CSV staging with TABLOCK; paths parameterized for portability |
-| Architecture pattern | **Medallion** | Bronze/silver/gold with an audit trail at every step |
-| Modeling | **Star schema** | Conformed dims, surrogate keys, degenerate keys, explicit grain |
-| Semantic layer | **11 views** | Business-readable columns and one definition per KPI |
-| Orchestration | **sqlcmd + scripted :r includes** | One command runs the whole pipeline, idempotently |
-| Validation | **Independent Python recomputation** | Every KPI reproduced from the raw CSVs |
+| Component            | Choice                               | Why                                                                    |
+| -------------------- | ------------------------------------ | ---------------------------------------------------------------------- |
+| Warehouse engine     | **Microsoft SQL Server 2025**        | Full T-SQL feature set, FK enforcement, minimal-logging loads          |
+| Language             | **T-SQL**                            | The entire platform — load, transform, model, report — is one language |
+| Load mechanism       | **BULK INSERT**                      | Raw CSV staging with TABLOCK; paths parameterized for portability      |
+| Architecture pattern | **Medallion**                        | Bronze/silver/gold with an audit trail at every step                   |
+| Modeling             | **Star schema**                      | Conformed dims, surrogate keys, degenerate keys, explicit grain        |
+| Semantic layer       | **11 views**                         | Business-readable columns and one definition per KPI                   |
+| Orchestration        | **sqlcmd + scripted :r includes**    | One command runs the whole pipeline, idempotently                      |
+| Validation           | **Independent Python recomputation** | Every KPI reproduced from the raw CSVs                                 |
 
 ---
 
@@ -149,14 +154,14 @@ Full design rationale: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 A full year's operations across three years (2022–2024), exported from a logistics operations
 database. The warehouse ingests **14 tables / 549,706 rows**:
 
-| Domain | Tables | Rows |
-|---|---|---|
-| Commercial | loads · customers · routes | 85,410 + 200 + 58 |
-| Execution | trips · delivery_events | 85,410 + 170,820 |
-| Cost | fuel_purchases · maintenance_records | 196,442 + 2,920 |
-| Risk | safety_incidents | 170 |
-| Fleet | trucks · trailers · drivers · facilities | 120 + 180 + 150 + 50 |
-| Pre-aggregated | driver_monthly_metrics · truck_utilization_metrics | 4,464 + 3,312 |
+| Domain         | Tables                                             | Rows                 |
+| -------------- | -------------------------------------------------- | -------------------- |
+| Commercial     | loads · customers · routes                         | 85,410 + 200 + 58    |
+| Execution      | trips · delivery_events                            | 85,410 + 170,820     |
+| Cost           | fuel_purchases · maintenance_records               | 196,442 + 2,920      |
+| Risk           | safety_incidents                                   | 170                  |
+| Fleet          | trucks · trailers · drivers · facilities           | 120 + 180 + 150 + 50 |
+| Pre-aggregated | driver_monthly_metrics · truck_utilization_metrics | 4,464 + 3,312        |
 
 The source data is realistic, which means it is **dirty**: 2% of trips have no driver or truck
 assigned, fuel purchases reference missing assets, booleans arrive as strings, and empty strings
@@ -171,7 +176,7 @@ data-engineering story. See [docs/DATA_QUALITY.md](docs/DATA_QUALITY.md).
 - **Star schema with enforced integrity** — 8 facts, 7 dims, 0 orphaned references (verified)
 - **Pipeline audit trail** — `gold.pipeline_audit` records every load in every layer
 - **Semantic view layer** — 11 business views with readable names and precomputed ratios
-- **KPI scorecard** — one row that answers *"how is the operation doing?"*
+- **KPI scorecard** — one row that answers _"how is the operation doing?"_
 - **Idempotent, one-command execution** — re-running the pipeline reproduces the warehouse
 - **Enterprise-grade documentation** — 7 focused docs, cross-linked, with verified numbers
 
@@ -212,16 +217,16 @@ SELECT * FROM gold.v_kpi_overview;   -- the headline scorecard
 
 The repository is documented as a system, not a pile of files. Each document has one job:
 
-| Document | Answers | Read it when you want to know… |
-|---|---|---|
-| [📘 README](README.md) | *Why does this exist?* | The 60-second pitch, verified results, how to run it |
-| [📋 BUSINESS_REQUIREMENTS.md](docs/BUSINESS_REQUIREMENTS.md) | *What problem was solved?* | The BRD: goals, stakeholders, success criteria, 11 business questions with verified answers |
-| [🏗️ ARCHITECTURE.md](docs/ARCHITECTURE.md) | *How is it designed?* | The medallion layers, the 5 key engineering decisions, scalability path |
-| [⭐ STAR_SCHEMA.md](docs/STAR_SCHEMA.md) | *How is it modeled?* | Facts, dimensions, grain, relationships, SCD strategy, query patterns |
-| [🔧 ETL.md](docs/ETL.md) | *How is it built?* | Extraction, validation, cleaning, transformation, loading, error handling |
-| [🛡️ DATA_QUALITY.md](docs/DATA_QUALITY.md) | *Can the numbers be trusted?* | Validation rules, referential integrity, NULL strategy, quality metrics |
-| [📏 KPI.md](docs/KPI.md) | *What do the numbers mean?* | Every KPI: definition, formula, interpretation, decision supported |
-| [📚 DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md) | *What is every column?* | Business meaning, allowed values, relationships, example values |
+| Document                                                     | Answers                       | Read it when you want to know…                                                              |
+| ------------------------------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------- |
+| [📘 README](README.md)                                       | _Why does this exist?_        | The 60-second pitch, verified results, how to run it                                        |
+| [📋 BUSINESS_REQUIREMENTS.md](docs/BUSINESS_REQUIREMENTS.md) | _What problem was solved?_    | The BRD: goals, stakeholders, success criteria, 11 business questions with verified answers |
+| [🏗️ ARCHITECTURE.md](docs/ARCHITECTURE.md)                   | _How is it designed?_         | The medallion layers, the 5 key engineering decisions, scalability path                     |
+| [⭐ STAR_SCHEMA.md](docs/STAR_SCHEMA.md)                     | _How is it modeled?_          | Facts, dimensions, grain, relationships, SCD strategy, query patterns                       |
+| [🔧 ETL.md](docs/ETL.md)                                     | _How is it built?_            | Extraction, validation, cleaning, transformation, loading, error handling                   |
+| [🛡️ DATA_QUALITY.md](docs/DATA_QUALITY.md)                   | _Can the numbers be trusted?_ | Validation rules, referential integrity, NULL strategy, quality metrics                     |
+| [📏 KPI.md](docs/KPI.md)                                     | _What do the numbers mean?_   | Every KPI: definition, formula, interpretation, decision supported                          |
+| [📚 DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md)             | _What is every column?_       | Business meaning, allowed values, relationships, example values                             |
 
 **Suggested reading order:** README → BUSINESS_REQUIREMENTS → ARCHITECTURE → STAR_SCHEMA → ETL →
 DATA_QUALITY → KPI. Use DATA_DICTIONARY as the reference you flip back to.
@@ -230,14 +235,14 @@ DATA_QUALITY → KPI. Use DATA_DICTIONARY as the reference you flip back to.
 
 ## SQL Skills Demonstrated
 
-| Skill | Where it shows |
-|---|---|
-| **Data warehousing** | Medallion design, surrogate keys, conformed dimensions, fact grain discipline |
-| **ETL engineering** | BULK INSERT staging, TRY_CONVERT-safe casting, idempotent pipelines, audit trail |
-| **Advanced T-SQL** | CTEs, window functions, conditional aggregation, computed columns, dynamic file paths |
-| **Data quality** | FK validation, NULL normalization, orphan-safe surrogates, duplicate detection |
-| **Database design** | Constraints, indexes, typed schemas, degenerate keys |
-| **BI / reporting** | Semantic views, KPI definitions, management-ready scorecards |
+| Skill                | Where it shows                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| **Data warehousing** | Medallion design, surrogate keys, conformed dimensions, fact grain discipline         |
+| **ETL engineering**  | BULK INSERT staging, TRY_CONVERT-safe casting, idempotent pipelines, audit trail      |
+| **Advanced T-SQL**   | CTEs, window functions, conditional aggregation, computed columns, dynamic file paths |
+| **Data quality**     | FK validation, NULL normalization, orphan-safe surrogates, duplicate detection        |
+| **Database design**  | Constraints, indexes, typed schemas, degenerate keys                                  |
+| **BI / reporting**   | Semantic views, KPI definitions, management-ready scorecards                          |
 
 ---
 
