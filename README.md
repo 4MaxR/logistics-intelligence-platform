@@ -264,27 +264,27 @@ Full requirement-by-requirement breakdown: [docs/BUSINESS_REQUIREMENTS.md](docs/
 
 ## Dashboard Preview
 
-The warehouse is the backend; the views are the dashboard. Four of the reports it feeds directly:
+The warehouse KPIs as an interactive dashboard: filter by year, load type and booking type, and
+switch any chart to a table. **[Open the live dashboard →](https://4maxr.github.io/logistics-intelligence-platform/)**
 
-```mermaid
-xychart-beta
-    title "On-time delivery rate by year (verified)"
-    x-axis [2022, 2023, 2024]
-    y-axis "On-time %" 0 --> 50
-    bar [44.7, 44.6, 44.6]
-```
+![Dashboard scorecard and key findings: $298.6M gross revenue, 44.6% on-time delivery, 83.0% fleet utilization, 6.50 MPG](docs/images/dashboard-scorecard.png)
 
-```mermaid
-xychart-beta
-    title "Fuel price per gallon by year (verified)"
-    x-axis [2022, 2023, 2024]
-    y-axis "USD/gal" 0 --> 5
-    bar [4.20, 3.85, 3.65]
-```
+![Revenue and service charts: monthly revenue, revenue by booking and load type, on-time rate by month, drivers by on-time rate, top 10 lanes, facility detention vs on-time rate](docs/images/dashboard-revenue-service.png)
 
-- **Revenue trend:** ~$99M/year, stable across 2022–2024
-- **Route ranking:** top 5 corridors each ≈$10.5–11.2M; Columbus → Portland wins revenue per mile
-- **Detention hotspots:** Indianapolis, Phoenix (93 min/event average)
+![Fleet, cost and risk charts: fuel price and MPG by month, truck utilization vs MPG, maintenance cost by type, safety incidents by type](docs/images/dashboard-fleet-cost-risk.png)
+
+- **Revenue trend:** ~$99M/year, flat across 2022–2024 ($7.5M–$8.8M every month)
+- **Service:** 44.6% of deliveries on time every year, against 66.7% of pickups; no driver, facility
+  or segment moves it by more than chance
+- **Route ranking:** Charlotte → Portland leads at $11.2M; the top 10 lanes are all 2,000+ mile runs
+- **Detention:** the same everywhere (102–110 min per delivery at every facility), and no higher on
+  late deliveries than on-time ones
+- **Fuel:** price per gallon fell 13% ($4.20 → $3.65) while fleet MPG held at 6.50
+
+The dashboard is built by [`dashboard/build_dashboard.py`](dashboard/build_dashboard.py) from the
+source CSVs, using the same formulas as the gold views, and it checks the headline KPIs against
+[docs/KPI.md](docs/KPI.md) before writing the page. To rebuild it, download the dataset from Kaggle
+into `data/` and run `python dashboard/build_dashboard.py`.
 
 ---
 
