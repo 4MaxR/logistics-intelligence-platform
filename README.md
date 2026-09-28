@@ -10,12 +10,9 @@
 
 # Logistics Intelligence Platform
 
-> **Live Dashboard**  
-> [_Here_](https://4maxr.github.io/logistics-intelligence-platform/)
-> **Project in Website**  
-> [_Here_](https://mostafaalrouby.com/projects/logistics-intelligence-platform.html)
-> **Download the dataset from Kaggle:**  
-> [_Here_](https://www.kaggle.com/datasets/yogape/logistics-operations-database)
+> **Live Dashboard** [_Here_](https://4maxr.github.io/logistics-intelligence-platform/)
+> **Project in Website** [_Here_](https://mostafaalrouby.com/projects/logistics-intelligence-platform.html)
+> **Download the dataset from Kaggle:** [_Here_](https://www.kaggle.com/datasets/yogape/logistics-operations-database)
 
 ## A data warehouse for a 120-truck logistics operation — built, executed, and verified on SQL Server.
 
