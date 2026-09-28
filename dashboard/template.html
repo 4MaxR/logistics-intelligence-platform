@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logistics Operations Dashboard</title>
+<meta name="description" content="Interactive KPI dashboard for the Logistics Intelligence Platform warehouse, 2022–2024.">
+<script>try { const t = localStorage.getItem('lod-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --surface-2: #f1f0ec;
+  --text-1: #0b0b0b;
+  --text-2: #52514e;
+  --muted: #6f6e69;
+  --axis-ink: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --deemph: #c3c2b7;
+  --band: rgba(11, 11, 11, 0.05);
+  --good: #006300;
+  --bad: #d03b3b;
+  --accent: #2a78d6;
+  --focus: #2a78d6;
+  --gap: 16px;
+  --radius: 10px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #242422;
+  --text-1: #ffffff;
+  --text-2: #c3c2b7;
+  --muted: #9d9b94;
+  --axis-ink: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --s1: #3987e5;
+  --s2: #d95926;
+  --deemph: #52514e;
+  --band: rgba(255, 255, 255, 0.06);
+  --good: #0ca30c;
+  --bad: #e66767;
+  --accent: #3987e5;
+  --focus: #6da7ec;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--page); }
+body {
+  font-family: var(--font);
+  background: var(--page);
+  color: var(--text-1);
+  line-height: 1.5;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+a { color: var(--accent); }
+
+.wrap { max-width: 1440px; margin: 0 auto; padding: 24px 24px 40px; }
+
+/* ---------- header & filters ---------- */
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+h1 { font-size: 26px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.2; margin-top: 2px; }
+.lede { color: var(--text-2); margin-top: 4px; max-width: 70ch; }
+
+.filters {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 0; margin-bottom: 16px;
+  background: var(--page);
+  border-bottom: 1px solid var(--border);
+}
+.filter { display: flex; align-items: center; gap: 8px; }
+.filter label { font-size: 12px; color: var(--text-2); }
+.filter select, .btn {
+  height: 34px; padding: 0 12px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text-1);
+  cursor: pointer;
+}
+.filter select { padding-right: 28px; }
+.btn:hover, .filter select:hover { background: var(--surface-2); }
+.btn.ghost { background: transparent; }
+.slice { font-size: 12px; color: var(--text-2); margin-left: auto; }
+
+/* ---------- KPI tiles ---------- */
+.section-title { font-size: 13px; font-weight: 600; color: var(--text-2); margin: 24px 0 10px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.section-title small { font-weight: 400; color: var(--muted); font-size: 12px; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
+.tile {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 18px; min-width: 0;
+}
+.tile-label { font-size: 13px; color: var(--text-2); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.tile-value { font-size: 30px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.2; margin-top: 6px; }
+.tile-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.tile-delta { font-size: 12px; font-weight: 600; margin-top: 8px; min-height: 18px; color: var(--text-2); }
+.tile-delta.good { color: var(--good); }
+.tile-delta.bad { color: var(--bad); }
+.tile-delta .vs { font-weight: 400; color: var(--muted); }
+
+.badge {
+  font-size: 11px; font-weight: 500; white-space: nowrap;
+  padding: 1px 8px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--muted);
+}
+
+/* ---------- findings ---------- */
+.findings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); }
+.finding {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 18px; border-left: 3px solid var(--accent);
+}
+.finding .tag { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.finding h3 { font-size: 15px; font-weight: 600; line-height: 1.35; margin: 4px 0 6px; }
+.finding p { color: var(--text-2); font-size: 13px; }
+
+/* ---------- chart cards ---------- */
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--gap); }
+.span-4 { grid-column: span 4; } .span-6 { grid-column: span 6; } .span-8 { grid-column: span 8; } .span-12 { grid-column: span 12; }
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 18px; min-width: 0;
+}
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.card-head h3 { font-size: 15px; font-weight: 600; line-height: 1.35; }
+.card-head .sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.tools { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.tbl-btn { height: 26px; padding: 0 10px; font-size: 12px; border-radius: 6px; }
+.tbl-btn[aria-pressed="true"] { background: var(--surface-2); color: var(--text-1); }
+.viz { position: relative; width: 100%; }
+.mini-label { font-size: 12px; color: var(--text-2); margin: 4px 0 2px; }
+.card.show-table .viz, .card.show-table .mini-label { display: none; }
+.viz-table { display: none; max-height: 320px; overflow: auto; }
+.card.show-table .viz-table { display: block; }
+
+/* ---------- tables ---------- */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th { font-size: 12px; font-weight: 600; color: var(--text-2); position: sticky; top: 0; background: var(--surface); z-index: 1; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr:hover { background: var(--surface-2); }
+th button { background: none; border: 0; cursor: pointer; font-weight: 600; color: inherit; padding: 0; display: inline-flex; gap: 4px; align-items: center; }
+th button .arrow { color: var(--muted); font-size: 10px; min-width: 10px; }
+th[aria-sort] button { color: var(--text-1); }
+
+.detail-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tab { height: 32px; padding: 0 14px; border-radius: 8px; border: 1px solid transparent; background: transparent; cursor: pointer; color: var(--text-2); }
+.tab[aria-selected="true"] { background: var(--surface-2); border-color: var(--border); color: var(--text-1); font-weight: 600; }
+.search { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--page); min-width: 220px; }
+.table-wrap { overflow-x: auto; }
+.pager { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; font-size: 12px; color: var(--text-2); flex-wrap: wrap; }
+.pager .btn { height: 28px; font-size: 12px; }
+.pager .btn:disabled { opacity: 0.4; cursor: default; }
+
+/* ---------- footer ---------- */
+footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-2); font-size: 12px; }
+footer h2 { font-size: 13px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; }
+footer ul { padding-left: 18px; display: grid; gap: 4px; max-width: 110ch; }
+footer .meta { margin-top: 12px; color: var(--muted); }
+
+.error { background: var(--surface); border: 1px solid var(--bad); color: var(--text-1); padding: 12px 16px; border-radius: var(--radius); margin-bottom: 16px; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1100px) {
+  .span-4, .span-6, .span-8 { grid-column: span 12; }
+  .findings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .wrap { padding: 16px 16px 32px; }
+  h1 { font-size: 22px; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .tile { padding: 12px 14px; }
+  .tile-value { font-size: 22px; }
+  .findings { grid-template-columns: 1fr; }
+  .filters { gap: 8px; }
+  .filter { flex: 1 1 140px; }
+  .filter select { flex: 1; min-width: 0; }
+  .slice { margin-left: 0; width: 100%; }
+  .card-head { flex-direction: column; }
+  .search { min-width: 0; width: 100%; }
+}
+@media print {
+  html, body { background: #fff; }
+  .filters, .tbl-btn, .theme-btn, .pager, .search { display: none !important; }
+  .card, .tile, .finding { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="eyebrow">Logistics Intelligence Platform</div>
+      <h1>Logistics Operations Dashboard</h1>
+      <p class="lede" id="lede"></p>
+    </div>
+    <button class="btn theme-btn" id="theme-btn" type="button" aria-label="Switch colour theme"></button>
+  </div>
+
+  <div id="error" class="error" hidden></div>
+
+  <nav class="filters" aria-label="Dashboard filters">
+    <div class="filter"><label for="f-year">Year</label><select id="f-year"></select></div>
+    <div class="filter"><label for="f-lt">Load type</label><select id="f-lt"></select></div>
+    <div class="filter"><label for="f-bt">Booking type</label><select id="f-bt"></select></div>
+    <button class="btn ghost" id="f-reset" type="button">Reset</button>
+    <span class="slice" id="slice" aria-live="polite"></span>
+  </nav>
+
+  <section aria-labelledby="kpi-title">
+    <h2 class="section-title" id="kpi-title">Scorecard <small id="kpi-note"></small></h2>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section aria-labelledby="find-title">
+    <h2 class="section-title" id="find-title">Key findings <small>Full period, all loads. These cards ignore the filters.</small></h2>
+    <div class="findings" id="findings"></div>
+  </section>
+
+  <h2 class="section-title">Revenue &amp; service</h2>
+  <div class="grid">
+    <article class="card span-8" id="card-rev">
+      <div class="card-head"><div><h3>Gross revenue by month</h3><p class="sub" id="sub-rev"></p></div>
+        <div class="tools"><button class="btn tbl-btn" type="button" aria-pressed="false">Table</button></div></div>
+      <div class="viz" style="height:260px"><canvas id="c-rev" role="img"></canvas></div>
+      <div class="viz-table"></div>
+    </article>
+    <article class="card span-4" id="card-mix">
+      <div class="card-head"><div><h3>Revenue by booking and load type</h3><p class="sub" id="sub-mix"></p></div>
+        <div class="tools"><button class="btn tbl-btn" type="button" aria-pressed="false">Table</button></div></div>
+      <div class="viz" style="height:260px"><canvas id="c-mix" role="img"></canvas></div>
+      <div class="viz-table"></div>
+    </article>
+
+    <article class="card span-8" id="card-ot">
+      <div class="card-head"><div><h3>On-time rate by month: deliveries vs pickups</h3><p class="sub" id="sub-ot"></p></div>
+        <div class="tools"><button class="btn tbl-btn" type="button" aria-pressed="false">Table</button></div></div>
+      <div class="viz" style="height:260px"><canvas id="c-ot" role="img"></canvas></div>
+      <div class="viz-table"></div>
+    </article>
+    <article class="card span-4" id="card-drv">
+      <div class="card-head"><div><h3>Drivers by on-time delivery rate</h3><p class="sub" id="sub-drv"></p></div>
+        <div class="tools"><button class="btn tbl-btn" type="button" aria-pressed="false">Table</button></div></div>
+      <div class="viz" style="height:260px"><canvas id="c-drv" role="img"></canvas></div>
+      <div class="viz-table"></div>
+    </article>
+
+    <article class="card span-6" id="card-lanes">
+      <div class="card-head"><div><h3>Top 10 lanes by gross revenue</h3><p class="sub" id="sub-lanes"></p></div>
+        <div class="tools"><button class="btn tbl-btn" type="button" aria-pressed="false">Table</button></div></div>
+      <div class="viz" style="height:300px"><canvas id="c-lanes" role="img"></canvas></div>
+      <div class="viz-table"></div>
+    </article>
+    <article class="card span-6" id="card-fac">
+      <div class="card-head"><div><h3>Facilities: delivery detention vs on-time rate</h3><p class="sub" id="sub-fac"></p></div>
+        <div class="tools"><button class="btn tbl-btn" type="button" aria-pressed="false">Table</button></div></div>
+      <div class="viz" style="height:300px"><canvas id="c-fac" role="img"></canvas></div>
+      <div class="viz-table"></div>
+    </article>
+  </div>
+
+  <h2 class="section-title">Fleet, cost &amp; risk <small>Load type and booking type filters don't apply to these sources.</small></h2>
+  <div class="grid">
+    <article class="card span-6" id="card-fuel">
+      <div class="card-head"><div><h3>Fuel price fell, fuel economy didn't move</h3><p class="sub" id="sub-fuel"></p></div>
+        <div class="tools"><span class="badge">Year filter only</span><button class="btn tbl-btn" type="button" aria-pressed="false">Table</button></div></div>
+      <p class="mini-label">Price per gallon</p>
+      <div class="viz" style="height:130px"><canvas id="c-fuel-price" role="img"></canvas></div>
+      <p class="mini-label">Fleet MPG (average of trip MPG)</p>
+      <div class="viz" style="height:130px"><canvas id="c-fuel-mpg" role="img"></canvas></div>
+      <div class="viz-table"></div>
+    </article>
+    <article class="card span-6" id="card-truck">
+      <div class="card-head"><div><h3>Trucks: utilization vs fuel economy</h3><p class="sub" id="sub-truck"></p></div>
+        <div class="tools"><span class="badge">Year filter only</span><button class="btn tbl-btn" type="button" aria-pressed="false">Table</button></div></div>
+      <div class="viz" style="height:292px"><canvas id="c-truck" role="img"></canvas></div>
+      <div class="viz-table"></div>
+    </article>
+
+    <article class="card span-6" id="card-maint">
+      <div class="card-head"><div><h3>Maintenance cost by type</h3><p class="sub" id="sub-maint"></p></div>
+        <div class="tools"><span class="badge">Year filter only</span><button class="btn tbl-btn" type="button" aria-pressed="false">Table</button></div></div>
+      <div class="viz" style="height:250px"><canvas id="c-maint" role="img"></canvas></div>
+      <div class="viz-table"></div>
+    </article>
+    <article class="card span-6" id="card-safety">
+      <div class="card-head"><div><h3>Safety incidents by type</h3><p class="sub" id="sub-safety"></p></div>
+        <div class="tools"><span class="badge">Year filter only</span><button class="btn tbl-btn" type="button" aria-pressed="false">Table</button></div></div>
+      <div class="viz" style="height:250px"><canvas id="c-safety" role="img"></canvas></div>
+      <div class="viz-table"></div>
+    </article>
+  </div>
+
+  <h2 class="section-title">Detail</h2>
+  <section class="card" aria-label="Detail tables">
+    <div class="detail-head">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <input class="search" id="search" type="search" placeholder="Search this table" aria-label="Search this table">
+    </div>
+    <p class="sub" id="detail-note" style="font-size:12px;color:var(--text-2);margin:-4px 0 10px"></p>
+    <div class="table-wrap" id="detail"></div>
+    <div class="pager"><span id="pager-info"></span>
+      <span><button class="btn ghost" id="prev" type="button">Previous</button> <button class="btn ghost" id="next" type="button">Next</button></span></div>
+  </section>
+
+  <footer>
+    <h2>Definitions &amp; data notes</h2>
+    <ul id="notes"></ul>
+    <p class="meta" id="meta"></p>
+  </footer>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const F = DATA.findings;
+
+/* ================= data access ================= */
+function toRows(name) {
+  const t = DATA[name];
+  return t.rows.map(r => {
+    const o = {};
+    t.cols.forEach((c, i) => { o[c] = r[i]; });
+    if (o.month !== undefined && o.year === undefined) o.year = +o.month.slice(0, 4);
+    return o;
+  });
+}
+const R = {};
+['loads_m', 'deliv_m', 'trips_m', 'cust', 'lanes', 'fac', 'drv', 'trucks_y', 'fuel_m', 'maint_y', 'safety']
+  .forEach(k => { R[k] = toRows(k); });
+
+function dim(kind, id) {
+  const d = DATA.dims[kind], v = d.map[id], o = { id };
+  if (v) d.cols.forEach((c, i) => { o[c] = v[i]; });
+  return o;
+}
+
+const state = { year: 'all', lt: 'all', bt: 'all' };
+const YEAR_ONLY = new Set(['trucks_y', 'fuel_m', 'maint_y', 'safety']);
+function sel(name, year = state.year) {
+  return R[name].filter(r =>
+    (year === 'all' || r.year === +year) &&
+    (YEAR_ONLY.has(name) || ((state.lt === 'all' || r.load_type === state.lt) &&
+                             (state.bt === 'all' || r.booking_type === state.bt))));
+}
+const sum = (a, k) => a.reduce((s, r) => s + (typeof k === 'function' ? k(r) : r[k]), 0);
+function groupBy(a, key) {
+  const m = new Map();
+  for (const r of a) {
+    const k = typeof key === 'function' ? key(r) : r[key];
+    if (!m.has(k)) m.set(k, []);
+    m.get(k).push(r);
+  }
+  return m;
+}
+const CHART_MONTHS = [...new Set(R.loads_m.map(r => r.month))].filter(m => DATA.years.includes(+m.slice(0, 4))).sort();
+const visibleMonths = () => CHART_MONTHS.filter(m => state.year === 'all' || m.startsWith(state.year));
+
+/* ================= formatting ================= */
+const trim = s => s.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+function money(v, d = 1) {
+  const a = Math.abs(v);
+  if (a >= 1e9) return '$' + trim((v / 1e9).toFixed(d)) + 'B';
+  if (a >= 1e6) return '$' + trim((v / 1e6).toFixed(d)) + 'M';
+  if (a >= 1e3) return '$' + trim((v / 1e3).toFixed(d)) + 'K';
+  return '$' + Math.round(v);
+}
+function compact(v, d = 1) {
+  const a = Math.abs(v);
+  if (a >= 1e6) return trim((v / 1e6).toFixed(d)) + 'M';
+  if (a >= 1e3) return trim((v / 1e3).toFixed(d)) + 'K';
+  return String(Math.round(v));
+}
+const int = v => Math.round(v).toLocaleString('en-US');
+const usd = v => '$' + Math.round(v).toLocaleString('en-US');
+const pct = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) + '%' : '–');
+const fixed = d => v => (Number.isFinite(v) ? v.toFixed(d) : '–');
+const monthLabel = (m, short) => {
+  const dt = new Date(+m.slice(0, 4), +m.slice(5, 7) - 1, 1);
+  const mon = dt.toLocaleString('en-US', { month: 'short' });
+  return short ? mon : `${mon} '${m.slice(2, 4)}`;
+};
+const setText = (id, t) => { document.getElementById(id).textContent = t; };
+function stdev(a) {
+  const m = a.reduce((s, v) => s + v, 0) / a.length;
+  return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1));
+}
+function median(a) {
+  const s = [...a].sort((x, y) => x - y), n = s.length;
+  return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+}
+function pearson(xs, ys) {
+  const n = xs.length, mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2; }
+  return sxy / Math.sqrt(sxx * syy);
+}
+
+/* ================= theme ================= */
+let TH = {};
+function readTheme() {
+  const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
+  TH = {
+    surface: v('--surface'), surface2: v('--surface-2'), text1: v('--text-1'), text2: v('--text-2'),
+    muted: v('--muted'), axisInk: v('--axis-ink'), grid: v('--grid'), axis: v('--axis'),
+    border: v('--border'), s1: v('--s1'), s2: v('--s2'), deemph: v('--deemph'), band: v('--band'),
+    font: v('--font'),
+  };
+}
+function setThemeButton() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  document.getElementById('theme-btn').textContent = dark ? 'Light theme' : 'Dark theme';
+}
+document.getElementById('theme-btn').addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem('lod-theme', next); } catch (e) {}
+  setThemeButton();
+  readTheme();
+  renderCharts();
+});
+
+/* ================= chart plumbing ================= */
+const hasChart = typeof Chart !== 'undefined';
+const wash = hex => hex + '1A';
+
+const crosshair = {
+  id: 'crosshair',
+  afterDraw(chart, _args, opts) {
+    if (!opts || !opts.enabled) return;
+    const active = chart.tooltip && chart.tooltip.getActiveElements();
+    if (!active || !active.length) return;
+    const x = active[0].element.x, { top, bottom } = chart.chartArea, ctx = chart.ctx;
+    ctx.save(); ctx.strokeStyle = TH.axisInk; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke(); ctx.restore();
+  },
+};
+const endLabels = {
+  id: 'endLabels',
+  afterDatasetsDraw(chart, _args, opts) {
+    if (!opts || !opts.format) return;
+    const ctx = chart.ctx;
+    ctx.save(); ctx.font = `12px ${TH.font}`; ctx.fillStyle = TH.text2; ctx.textBaseline = 'middle';
+    chart.data.datasets.forEach((ds, i) => {
+      const meta = chart.getDatasetMeta(i);
+      if (meta.hidden || !meta.data.length) return;
+      const last = meta.data[meta.data.length - 1];
+      ctx.fillText(`${ds.label} ${opts.format(ds.data[ds.data.length - 1])}`, last.x + 8, last.y);
+    });
+    ctx.restore();
+  },
+};
+const valueLabels = {
+  id: 'valueLabels',
+  afterDatasetsDraw(chart, _args, opts) {
+    if (!opts || !opts.format) return;
+    const ctx = chart.ctx, metas = chart.data.datasets.map((_, i) => chart.getDatasetMeta(i)).filter(m => !m.hidden);
+    ctx.save(); ctx.font = `500 11px ${TH.font}`; ctx.fillStyle = TH.text2; ctx.textBaseline = 'middle';
+    chart.data.labels.forEach((_, j) => {
+      let total = 0, x = -Infinity, y = null;
+      metas.forEach(m => {
+        const el = m.data[j];
+        total += chart.data.datasets[m.index].data[j] || 0;
+        if (el) { x = Math.max(x, el.x); y = el.y; }
+      });
+      if (y !== null) ctx.fillText(opts.format(total), x + 6, y);
+    });
+    ctx.restore();
+  },
+};
+const band = {
+  id: 'band',
+  beforeDatasetsDraw(chart, _args, opts) {
+    if (!opts || opts.lo === undefined) return;
+    const { left, right } = chart.chartArea, y = chart.scales.y, ctx = chart.ctx;
+    const top = y.getPixelForValue(opts.hi), bottom = y.getPixelForValue(opts.lo);
+    ctx.save(); ctx.fillStyle = TH.band; ctx.fillRect(left, top, right - left, bottom - top);
+    ctx.font = `11px ${TH.font}`; ctx.fillStyle = TH.muted; ctx.textBaseline = 'bottom';
+    ctx.fillText(opts.label, left + 6, top - 3);
+    ctx.restore();
+  },
+};
+
+function tooltip(label, title) {
+  return {
+    backgroundColor: TH.surface2, borderColor: TH.border, borderWidth: 1,
+    titleColor: TH.text2, bodyColor: TH.text1, titleFont: { weight: '500', size: 12 },
+    bodyFont: { size: 12, weight: '600' }, padding: 10, cornerRadius: 6,
+    usePointStyle: true, boxWidth: 14, boxHeight: 2, caretSize: 0,
+    callbacks: {
+      labelPointStyle: () => ({ pointStyle: 'line', rotation: 0 }),
+      labelColor: c => ({ borderColor: c.dataset._color, backgroundColor: c.dataset._color, borderWidth: 2 }),
+      label, ...(title ? { title } : {}),
+    },
+  };
+}
+function legend(style) {
+  return {
+    display: true, position: 'top', align: 'start',
+    labels: { usePointStyle: true, pointStyle: style, boxWidth: 12, boxHeight: 8, padding: 14, color: TH.text2, font: { size: 12 } },
+  };
+}
+function valueAxis(o = {}) {
+  return {
+    beginAtZero: true,
+    grid: { color: TH.grid, lineWidth: 1, drawTicks: false },
+    border: { display: false },
+    ticks: { color: TH.axisInk, padding: 8, font: { size: 11 }, maxTicksLimit: 6, callback: o.fmt },
+    title: o.title ? { display: true, text: o.title, color: TH.muted, font: { size: 11 } } : undefined,
+    min: o.min, max: o.max, suggestedMin: o.suggestedMin, suggestedMax: o.suggestedMax,
+  };
+}
+function categoryAxis(o = {}) {
+  return {
+    grid: { display: false },
+    border: { color: TH.axis },
+    ticks: { color: o.color || TH.axisInk, font: { size: o.size || 11 }, autoSkip: o.autoSkip !== false, maxRotation: 0, padding: 6 },
+  };
+}
+function lineDataset(label, data, color, fill) {
+  return {
+    label, data, _color: color, borderColor: color, backgroundColor: fill ? wash(color) : color,
+    fill: fill ? 'origin' : false, borderWidth: 2, tension: 0, borderCapStyle: 'round', borderJoinStyle: 'round',
+    pointRadius: 0, pointHoverRadius: 5, pointHoverBorderWidth: 2, pointHoverBorderColor: TH.surface,
+    pointHoverBackgroundColor: color,
+  };
+}
+function barDataset(label, data, color, stacked) {
+  return {
+    label, data, _color: color, backgroundColor: color, maxBarThickness: 24,
+    borderRadius: 4, borderSkipped: 'start',
+    borderWidth: stacked ? { right: 2, top: 0, bottom: 0, left: 0 } : 0, borderColor: TH.surface,
+    hoverBackgroundColor: color,
+  };
+}
+
+const charts = {}, tables = {};
+function draw(id, cfg, summary) {
+  const el = document.getElementById(id);
+  el.setAttribute('aria-label', summary || '');
+  if (!hasChart) return;
+  if (charts[id]) charts[id].destroy();
+  cfg.options.animation = false;
+  cfg.options.responsive = true;
+  cfg.options.maintainAspectRatio = false;
+  charts[id] = new Chart(el, cfg);
+}
+
+/* ================= KPI tiles ================= */
+function kpis(year) {
+  const L = sel('loads_m', year), E = sel('deliv_m', year), T = sel('trips_m', year);
+  const D = E.filter(r => r.event_type === 'Delivery'), P = E.filter(r => r.event_type === 'Pickup');
+  const U = sel('trucks_y', year), Fu = sel('fuel_m', year), S = sel('safety', year);
+  return {
+    gross: sum(L, 'gross'), loads: sum(L, 'loads'), trips: sum(T, 'trips'), miles: sum(T, 'miles'),
+    deliveries: sum(D, 'events'), onTime: sum(D, 'on_time'), ot: 100 * sum(D, 'on_time') / sum(D, 'events'),
+    det: sum(D, 'det') / sum(D, 'events'), detPickup: sum(P, 'det') / sum(P, 'events'),
+    util: 100 * sum(U, 'util') / sum(U, 'months'), trucks: new Set(U.map(r => r.truck_id)).size,
+    mpg: sum(T, 'mpg') / sum(T, 'trips'),
+    fuel: sum(Fu, 'cost'), gallons: sum(Fu, 'gallons'), ppg: sum(Fu, 'cost') / sum(Fu, 'gallons'),
+    claims: sum(S, 'claim_amount'), incidents: S.length, preventable: sum(S, 'preventable_flag'),
+  };
+}
+const TILES = [
+  { key: 'gross', label: 'Gross revenue', value: k => money(k.gross), sub: k => `${usd(k.gross / k.loads)} per load`, up: 1, rel: true },
+  { key: 'loads', label: 'Loads', value: k => int(k.loads), sub: k => `${compact(k.miles)} miles · ${int(k.miles / k.trips)} mi per trip`, up: 1, rel: true },
+  { key: 'ot', label: 'On-time delivery', value: k => pct(k.ot), sub: k => `${int(k.onTime)} of ${int(k.deliveries)} deliveries within ±2 h`, up: 1 },
+  { key: 'det', label: 'Avg delivery detention', value: k => `${k.det.toFixed(1)} min`, sub: k => `Pickups: ${k.detPickup.toFixed(1)} min`, up: -1, rel: true },
+  { key: 'util', label: 'Fleet utilization', yearOnly: true, value: k => pct(k.util), sub: k => `${k.trucks} trucks report monthly metrics`, up: 1 },
+  { key: 'mpg', label: 'Fleet MPG', value: k => k.mpg.toFixed(2), sub: () => 'Average of trip MPG', up: 1, rel: true },
+  { key: 'fuel', label: 'Fuel spend', yearOnly: true, value: k => money(k.fuel), sub: k => `$${k.ppg.toFixed(2)}/gal · ${compact(k.gallons)} gal`, up: -1, rel: true },
+  { key: 'claims', label: 'Safety claims', yearOnly: true, value: k => money(k.claims, k.claims >= 1e6 ? 2 : 1), sub: k => `${k.incidents} incidents · ${k.preventable} preventable`, up: -1, rel: true },
+];
+function buildTiles() {
+  const host = document.getElementById('kpis');
+  TILES.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'tile';
+    el.innerHTML = '<div class="tile-label"><span></span></div><div class="tile-value"></div><div class="tile-sub"></div><div class="tile-delta"></div>';
+    el.querySelector('.tile-label span').textContent = t.label;
+    if (t.yearOnly) {
+      const b = document.createElement('span');
+      b.className = 'badge'; b.textContent = 'Year only';
+      b.title = 'Load type and booking type filters do not apply to this source';
+      el.querySelector('.tile-label').appendChild(b);
+    }
+    t.el = el;
+    host.appendChild(el);
+  });
+}
+function renderTiles() {
+  const k = kpis(state.year);
+  const prevYear = state.year !== 'all' && DATA.years.includes(+state.year - 1) ? String(+state.year - 1) : null;
+  const p = prevYear ? kpis(prevYear) : null;
+  TILES.forEach(t => {
+    t.el.querySelector('.tile-value').textContent = t.value(k);
+    t.el.querySelector('.tile-sub').textContent = t.sub(k);
+    const d = t.el.querySelector('.tile-delta');
+    d.className = 'tile-delta';
+    d.textContent = '';
+    if (!p) return;
+    const change = t.rel ? 100 * (k[t.key] / p[t.key] - 1) : k[t.key] - p[t.key];
+    const shown = Math.abs(change) < 0.05 ? 0 : change;
+    const arrow = shown > 0 ? '▲ ' : shown < 0 ? '▼ ' : '';
+    const text = `${arrow}${shown > 0 ? '+' : ''}${shown.toFixed(1)}${t.rel ? '%' : ' pts'}`;
+    if (shown) d.classList.add(shown * t.up > 0 ? 'good' : 'bad');
+    d.append(text);
+    const vs = document.createElement('span');
+    vs.className = 'vs'; vs.textContent = ` vs ${prevYear}`;
+    d.appendChild(vs);
+  });
+  setText('kpi-note', state.year === 'all'
+    ? 'All years. Choose a single year to compare against the year before.'
+    : prevYear ? `${state.year}, compared with ${prevYear}` : `${state.year}. No earlier year in the data to compare with.`);
+}
+
+/* ================= findings ================= */
+function buildFindings() {
+  const y = F.on_time_year, s = F.segments;
+  const cards = [
+    ['Service', `On-time delivery is stuck at ${pct(kpis('all').ot)}`,
+      `${y[2022]}% → ${y[2023]}% → ${y[2024]}% across 2022–2024, and no month left the ${F.on_time_month_min}–${F.on_time_month_max}% band. Pickups are on time ${F.pickup_on_time}% of the time, so the service loss happens between pickup and delivery.`],
+    ['Service', 'No driver, facility or segment explains it',
+      `Driver on-time rates spread with an sd of ${F.driver_sd} pts; chance alone predicts ${F.driver_sd_chance}. Facilities range ${F.fac_ot_min}–${F.fac_ot_max}%, Dry Van ${s['Dry Van']}% vs Refrigerated ${s['Refrigerated']}%, bookings ${Math.min(s.Contract, s.Dedicated, s.Spot)}–${Math.max(s.Contract, s.Dedicated, s.Spot)}%. Late deliveries arrive a median ${F.late_median_min} min after schedule, which points at how delivery windows are set, not at who runs them.`],
+    ['Operations', 'Detention is uniform and unrelated to lateness',
+      `Deliveries average ${F.det_delivery} min of detention vs ${F.det_pickup} min at pickup, and every facility sits between ${F.fac_det_min} and ${F.fac_det_max} min. On-time and late deliveries carry the same detention (${F.det_on_time} vs ${F.det_late} min), so there are no "hotspots" to fix.`],
+    ['Cost', 'Fuel savings came from the market, not the fleet',
+      `Price per gallon fell ${Math.abs(F.ppg_change)}% ($${F.ppg[2022].toFixed(2)} → $${F.ppg[2024].toFixed(2)}) while fleet MPG held at ${F.mpg_year[2022].toFixed(2)}–${F.mpg_year[2024].toFixed(2)}. At 2022 prices, 2024's gallons would have cost about ${money(F.savings_2024)} more. Efficiency is the lever still unpulled.`],
+    ['Commercial', `Revenue is spread across ${F.accounts} accounts`,
+      `The largest account (${F.top_account.name}, ${F.top_account.id}) is ${money(F.top_account.gross, 2)}, ${F.top_account.share}% of revenue. Names repeat, with ${F.names} names across ${F.accounts} accounts, so totals by name overstate concentration: "XYZ Wholesale" is ${F.xyz_accounts} accounts adding up to ${money(F.xyz_gross)}.`],
+    ['Data quality', `${F.unassigned_share}% of trips have no truck assigned`,
+      `${int(F.unassigned_trips)} trips carrying ${money(F.unassigned_revenue)} of revenue have no truck. The warehouse keeps them as Unknown rather than dropping them. Only ${F.trucks_with_metrics} of ${F.trucks_total} trucks report monthly utilization.`],
+  ];
+  const host = document.getElementById('findings');
+  cards.forEach(([tag, h, p]) => {
+    const el = document.createElement('article');
+    el.className = 'finding';
+    const t = document.createElement('div'); t.className = 'tag'; t.textContent = tag;
+    const hh = document.createElement('h3'); hh.textContent = h;
+    const pp = document.createElement('p'); pp.textContent = p;
+    el.append(t, hh, pp);
+    host.appendChild(el);
+  });
+}
+
+/* ================= charts ================= */
+function chartRevenue() {
+  const months = visibleMonths(), by = groupBy(sel('loads_m'), 'month');
+  const gross = months.map(m => sum(by.get(m) || [], 'gross')), loads = months.map(m => sum(by.get(m) || [], 'loads'));
+  const short = state.year !== 'all';
+  const lowest = months[gross.indexOf(Math.min(...gross))];
+  const why = lowest.endsWith('-02') ? ' February is lowest because it has the fewest days.' : '';
+  const sub = `${money(Math.min(...gross))} to ${money(Math.max(...gross))} per month across ${months.length} months.${why}`;
+  setText('sub-rev', sub);
+  tables['card-rev'] = { head: ['Month', 'Gross revenue', 'Loads'], rows: months.map((m, i) => [monthLabel(m), usd(gross[i]), int(loads[i])]) };
+  draw('c-rev', {
+    type: 'line',
+    data: { labels: months.map(m => monthLabel(m, short)), datasets: [lineDataset('Gross revenue', gross, TH.s1, true)] },
+    options: {
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, crosshair: { enabled: true }, tooltip: tooltip(c => `${money(c.parsed.y, 2)}  gross revenue`) },
+      scales: { x: categoryAxis(), y: valueAxis({ fmt: v => money(v, 1) }) },
+    },
+  }, `Gross revenue by month. ${sub}`);
+}
+
+function chartMix() {
+  const L = sel('loads_m'), total = sum(L, 'gross');
+  const bts = [...groupBy(L, 'booking_type').entries()].map(([k, v]) => [k, sum(v, 'gross')]).sort((a, b) => b[1] - a[1]).map(d => d[0]);
+  const colors = { [DATA.load_types[0]]: TH.s1, [DATA.load_types[1]]: TH.s2 };
+  const datasets = DATA.load_types.map(lt => barDataset(lt, bts.map(bt => sum(L.filter(r => r.booking_type === bt && r.load_type === lt), 'gross')), colors[lt], true));
+  const topShare = 100 * sum(L.filter(r => r.booking_type === bts[0]), 'gross') / total;
+  const sub = bts.length > 1 ? `${bts[0]} bookings bring in ${pct(topShare)} of revenue in this view.` : `${bts[0]} bookings only.`;
+  setText('sub-mix', sub);
+  tables['card-mix'] = { head: ['Booking type', ...DATA.load_types, 'Total'], rows: bts.map((bt, i) => [bt, ...datasets.map(d => usd(d.data[i])), usd(datasets.reduce((s, d) => s + d.data[i], 0))]) };
+  draw('c-mix', {
+    type: 'bar',
+    data: { labels: bts, datasets },
+    options: {
+      indexAxis: 'y', layout: { padding: { right: 52 } },
+      interaction: { mode: 'index', axis: 'y', intersect: false },
+      plugins: { legend: legend('rect'), valueLabels: { format: v => money(v) }, tooltip: tooltip(c => `${money(c.parsed.x, 2)}  ${c.dataset.label}`) },
+      scales: { x: { ...valueAxis({ fmt: v => money(v, 0) }), stacked: true }, y: { ...categoryAxis({ color: TH.text2, size: 12 }), stacked: true } },
+    },
+  }, `Revenue by booking and load type. ${sub}`);
+}
+
+function chartOnTime() {
+  const months = visibleMonths(), by = groupBy(sel('deliv_m'), r => `${r.month}|${r.event_type}`);
+  const rate = (m, t) => { const a = by.get(`${m}|${t}`) || []; return 100 * sum(a, 'on_time') / sum(a, 'events'); };
+  const dl = months.map(m => rate(m, 'Delivery')), pu = months.map(m => rate(m, 'Pickup'));
+  const short = state.year !== 'all';
+  const sub = `Deliveries run ${pct(Math.min(...dl))} to ${pct(Math.max(...dl))} on time each month; pickups run ${pct(Math.min(...pu))} to ${pct(Math.max(...pu))}.`;
+  setText('sub-ot', sub);
+  tables['card-ot'] = { head: ['Month', 'Delivery on-time', 'Pickup on-time'], rows: months.map((m, i) => [monthLabel(m), pct(dl[i]), pct(pu[i])]) };
+  draw('c-ot', {
+    type: 'line',
+    data: { labels: months.map(m => monthLabel(m, short)), datasets: [lineDataset('Delivery', dl, TH.s1), lineDataset('Pickup', pu, TH.s2)] },
+    options: {
+      layout: { padding: { right: 96 } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: legend('line'), crosshair: { enabled: true }, endLabels: { format: v => pct(v) }, tooltip: tooltip(c => `${pct(c.parsed.y)}  ${c.dataset.label}`) },
+      scales: { x: categoryAxis(), y: valueAxis({ min: 0, max: 100, fmt: v => v + '%' }) },
+    },
+  }, `On-time rate by month. ${sub}`);
+}
+
+function chartDrivers() {
+  const by = groupBy(sel('drv'), 'driver_id');
+  const drivers = [...by.entries()].map(([id, a]) => ({ id, n: sum(a, 'deliveries'), ot: sum(a, 'on_time') })).filter(d => d.n >= 20);
+  const rates = drivers.map(d => 100 * d.ot / d.n);
+  const p = sum(drivers, 'ot') / sum(drivers, 'n'), medN = median(drivers.map(d => d.n));
+  const chance = 100 * Math.sqrt(p * (1 - p) / medN), sd = stdev(rates);
+  const span = Math.max(...rates) - Math.min(...rates);
+  const w = [1, 2, 2.5, 5, 10, 20].find(s => span / s <= 12) || 20;
+  const start = Math.floor(Math.min(...rates) / w) * w, nb = Math.max(1, Math.ceil((Math.max(...rates) - start) / w + 1e-9));
+  const counts = Array(nb).fill(0);
+  rates.forEach(r => { counts[Math.min(nb - 1, Math.floor((r - start) / w))]++; });
+  const labels = counts.map((_, i) => `${trim((start + i * w).toFixed(1))}–${trim((start + (i + 1) * w).toFixed(1))}%`);
+  const sub = `${drivers.length} drivers with 20+ deliveries. Their spread (sd ${sd.toFixed(1)} pts) is close to the ${chance.toFixed(1)} pts that chance alone produces at about ${int(medN)} deliveries each.`;
+  setText('sub-drv', sub);
+  tables['card-drv'] = { head: ['On-time band', 'Drivers'], rows: labels.map((l, i) => [l, counts[i]]) };
+  draw('c-drv', {
+    type: 'bar',
+    data: { labels, datasets: [barDataset('Drivers', counts, TH.s1)] },
+    options: {
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: tooltip(c => `${c.parsed.y} drivers`, items => `On-time ${items[0].label}`) },
+      scales: { x: { ...categoryAxis(), title: { display: true, text: 'On-time delivery rate', color: TH.muted, font: { size: 11 } } }, y: valueAxis({ fmt: v => (Number.isInteger(v) ? v : '') }) },
+    },
+  }, `Histogram of driver on-time rates. ${sub}`);
+}
+
+function chartLanes() {
+  const L = sel('lanes'), total = sum(L, 'gross');
+  const lanes = [...groupBy(L, 'route_id').entries()].map(([id, a]) => ({ id, gross: sum(a, 'gross'), loads: sum(a, 'loads'), ...dim('routes', id) }))
+    .sort((a, b) => b.gross - a.gross);
+  const top = lanes.slice(0, 10);
+  const sub = `The top 10 of ${lanes.length} lanes bring in ${pct(100 * sum(top, 'gross') / total)} of revenue. All are 2,000+ mile cross-country runs.`;
+  setText('sub-lanes', top.every(l => l.miles >= 2000) ? sub : sub.split('. ')[0] + '.');
+  tables['card-lanes'] = { head: ['Lane', 'Miles', 'Loads', 'Gross revenue'], rows: top.map(l => [l.corridor, int(l.miles), int(l.loads), usd(l.gross)]) };
+  draw('c-lanes', {
+    type: 'bar',
+    data: { labels: top.map(l => l.corridor), datasets: [barDataset('Gross revenue', top.map(l => l.gross), TH.s1)] },
+    options: {
+      indexAxis: 'y', layout: { padding: { right: 56 } },
+      interaction: { mode: 'index', axis: 'y', intersect: false },
+      plugins: { legend: { display: false }, valueLabels: { format: v => money(v, 2) }, tooltip: tooltip(c => `${money(c.parsed.x, 2)}  ·  ${int(top[c.dataIndex].loads)} loads`) },
+      scales: { x: valueAxis({ fmt: v => money(v, 0) }), y: categoryAxis({ color: TH.text2, size: 12, autoSkip: false }) },
+    },
+  }, `Top 10 lanes by revenue. ${sub}`);
+}
+
+function chartFacilities() {
+  const pts = [...groupBy(sel('fac'), 'facility_id').entries()].map(([id, a]) => {
+    const n = sum(a, 'events');
+    return { x: sum(a, 'det') / n, y: 100 * sum(a, 'on_time') / n, n, ...dim('facilities', id) };
+  });
+  const p = sum(pts, d => d.y * d.n) / 100 / sum(pts, 'n'), medN = median(pts.map(d => d.n));
+  const sigma = 100 * Math.sqrt(p * (1 - p) / medN), lo = 100 * p - 2 * sigma, hi = 100 * p + 2 * sigma;
+  const outside = pts.filter(d => d.y < lo || d.y > hi).length;
+  const ys = pts.map(d => d.y), xs = pts.map(d => d.x);
+  const sub = `${pts.length} facilities, on-time ${pct(Math.min(...ys))} to ${pct(Math.max(...ys))}, detention ${Math.min(...xs).toFixed(0)} to ${Math.max(...xs).toFixed(0)} min. ${outside} of ${pts.length} fall outside the shaded range that chance alone produces at about ${int(medN)} deliveries each.`;
+  setText('sub-fac', sub);
+  const sorted = [...pts].sort((a, b) => a.y - b.y);
+  tables['card-fac'] = { head: ['Facility', 'City', 'Deliveries', 'On-time', 'Avg detention (min)'], rows: sorted.map(d => [d.name, `${d.city}, ${d.state}`, int(d.n), pct(d.y), d.x.toFixed(1)]) };
+  const ds = { label: 'Facilities', data: pts, _color: TH.s1, backgroundColor: TH.s1, borderColor: TH.surface, borderWidth: 2, pointRadius: 5, pointHoverRadius: 7, pointHitRadius: 12 };
+  draw('c-fac', {
+    type: 'scatter',
+    data: { datasets: [ds] },
+    options: {
+      interaction: { mode: 'nearest', intersect: false },
+      plugins: {
+        legend: { display: false }, band: { lo, hi, label: 'Range expected from chance (±2σ)' },
+        tooltip: tooltip(c => [`${pct(c.raw.y)} on time`, `${c.raw.x.toFixed(1)} min avg detention`, `${int(c.raw.n)} deliveries`], items => `${items[0].raw.name}, ${items[0].raw.state}`),
+      },
+      scales: {
+        x: { ...valueAxis({ title: 'Avg delivery detention (min)', fmt: v => v }), beginAtZero: false, grid: { display: false }, border: { color: TH.axis } },
+        y: { ...valueAxis({ title: 'On-time %', fmt: v => v + '%', suggestedMin: Math.floor(lo - 1), suggestedMax: Math.ceil(hi + 1) }), beginAtZero: false },
+      },
+    },
+  }, `Scatter of facilities. ${sub}`);
+}
+
+function chartFuel() {
+  const months = visibleMonths(), short = state.year !== 'all';
+  const fb = groupBy(R.fuel_m, 'month'), tb = groupBy(R.trips_m, 'month');
+  const price = months.map(m => { const a = fb.get(m) || []; return sum(a, 'cost') / sum(a, 'gallons'); });
+  const gallons = months.map(m => sum(fb.get(m) || [], 'gallons'));
+  const spend = months.map(m => sum(fb.get(m) || [], 'cost'));
+  const mpg = months.map(m => { const a = tb.get(m) || []; return sum(a, 'mpg') / sum(a, 'trips'); });
+  const first = price[0], last = price[price.length - 1];
+  const sub = `$/gal went from $${first.toFixed(2)} to $${last.toFixed(2)} (${(100 * (last / first - 1)).toFixed(1)}%) over this period while MPG stayed at ${Math.min(...mpg).toFixed(2)}–${Math.max(...mpg).toFixed(2)}.`;
+  setText('sub-fuel', sub);
+  tables['card-fuel'] = { head: ['Month', '$/gal', 'Gallons', 'Fuel spend', 'Fleet MPG'], rows: months.map((m, i) => [monthLabel(m), '$' + price[i].toFixed(3), int(gallons[i]), usd(spend[i]), mpg[i].toFixed(2)]) };
+  const labels = months.map(m => monthLabel(m, short));
+  const mini = (id, label, data, fmt, max) => draw(id, {
+    type: 'line',
+    data: { labels, datasets: [lineDataset(label, data, TH.s1, true)] },
+    options: {
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, crosshair: { enabled: true }, tooltip: tooltip(c => `${fmt(c.parsed.y)}  ${label}`) },
+      scales: { x: categoryAxis(), y: { ...valueAxis({ min: 0, max, fmt }), ticks: { ...valueAxis({ fmt }).ticks, maxTicksLimit: 3 } } },
+    },
+  }, `${label} by month. ${sub}`);
+  mini('c-fuel-price', 'per gallon', price, v => '$' + Number(v).toFixed(2), 5);
+  mini('c-fuel-mpg', 'MPG', mpg, v => Number(v).toFixed(1), 8);
+}
+
+function chartTrucks() {
+  const pts = [...groupBy(sel('trucks_y'), 'truck_id').entries()].map(([id, a]) => {
+    const m = sum(a, 'months');
+    return { x: 100 * sum(a, 'util') / m, y: sum(a, 'mpg') / m, maint: sum(a, 'maint_cost'), ...dim('trucks', id) };
+  });
+  const r = pearson(pts.map(p => p.x), pts.map(p => p.y));
+  const xs = pts.map(p => p.x);
+  const verdict = Math.abs(r) < 0.2 ? 'Busier trucks are not more fuel-efficient.' : r > 0 ? 'Busier trucks tend to be more efficient.' : 'Busier trucks tend to be less efficient.';
+  const sub = `${pts.length} trucks, utilization ${pct(Math.min(...xs))} to ${pct(Math.max(...xs))}, r = ${r.toFixed(2)}. ${verdict}`;
+  setText('sub-truck', sub);
+  tables['card-truck'] = { head: ['Truck', 'Make', 'Model year', 'Utilization', 'Avg MPG'], rows: [...pts].sort((a, b) => b.x - a.x).map(p => [p.id, p.make, p.model_year, pct(p.x), p.y.toFixed(2)]) };
+  draw('c-truck', {
+    type: 'scatter',
+    data: { datasets: [{ label: 'Trucks', data: pts, _color: TH.s1, backgroundColor: TH.s1, borderColor: TH.surface, borderWidth: 2, pointRadius: 5, pointHoverRadius: 7, pointHitRadius: 12 }] },
+    options: {
+      interaction: { mode: 'nearest', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: tooltip(c => [`${pct(c.raw.x)} utilization`, `${c.raw.y.toFixed(2)} MPG`], items => `${items[0].raw.id} · ${items[0].raw.make} ${items[0].raw.model_year}`),
+      },
+      scales: {
+        x: { ...valueAxis({ title: 'Average utilization', fmt: v => v + '%' }), beginAtZero: false, grid: { display: false }, border: { color: TH.axis } },
+        y: { ...valueAxis({ title: 'Average MPG', fmt: v => Number(v).toFixed(2) }), beginAtZero: false },
+      },
+    },
+  }, `Scatter of trucks. ${sub}`);
+}
+
+function chartMaintenance() {
+  const M = sel('maint_y');
+  const types = [...groupBy(M, 'maintenance_type').entries()].map(([t, a]) => ({ t, cost: sum(a, 'cost'), events: sum(a, 'events'), down: sum(a, 'downtime') })).sort((a, b) => b.cost - a.cost);
+  const spread = types[0].cost / types[types.length - 1].cost;
+  const shape = spread < 1.5 ? 'Cost splits fairly evenly across types.' : `${types[0].t} costs the most.`;
+  const sub = `${int(sum(types, 'events'))} events, ${money(sum(types, 'cost'), 2)} and ${int(sum(types, 'down'))} h of downtime. ${shape}`;
+  setText('sub-maint', sub);
+  tables['card-maint'] = { head: ['Type', 'Events', 'Cost', 'Downtime (h)'], rows: types.map(d => [d.t, int(d.events), usd(d.cost), int(d.down)]) };
+  draw('c-maint', {
+    type: 'bar',
+    data: { labels: types.map(d => d.t), datasets: [barDataset('Maintenance cost', types.map(d => d.cost), TH.s1)] },
+    options: {
+      indexAxis: 'y', layout: { padding: { right: 52 } },
+      interaction: { mode: 'index', axis: 'y', intersect: false },
+      plugins: { legend: { display: false }, valueLabels: { format: v => money(v) }, tooltip: tooltip(c => `${money(c.parsed.x, 2)}  ·  ${types[c.dataIndex].events} events`) },
+      scales: { x: valueAxis({ fmt: v => money(v, 1) }), y: categoryAxis({ color: TH.text2, size: 12, autoSkip: false }) },
+    },
+  }, `Maintenance cost by type. ${sub}`);
+}
+
+function chartSafety() {
+  const S = sel('safety');
+  const types = [...groupBy(S, 'incident_type').entries()].map(([t, a]) => ({
+    t, prev: sum(a, 'preventable_flag'), other: a.length - sum(a, 'preventable_flag'), n: a.length, claims: sum(a, 'claim_amount'),
+  })).sort((a, b) => b.n - a.n);
+  const n = S.length, prev = sum(S, 'preventable_flag');
+  const sub = `${n} incidents, ${money(sum(S, 'claim_amount'), 2)} in claims. ${prev} (${pct(100 * prev / n, 0)}) were preventable.`;
+  setText('sub-safety', sub);
+  tables['card-safety'] = { head: ['Type', 'Preventable', 'Not preventable', 'Total', 'Claims'], rows: types.map(d => [d.t, d.prev, d.other, d.n, usd(d.claims)]) };
+  draw('c-safety', {
+    type: 'bar',
+    data: {
+      labels: types.map(d => d.t),
+      datasets: [barDataset('Preventable', types.map(d => d.prev), TH.s1, true), barDataset('Not preventable', types.map(d => d.other), TH.deemph, true)],
+    },
+    options: {
+      indexAxis: 'y', layout: { padding: { right: 32 } },
+      interaction: { mode: 'index', axis: 'y', intersect: false },
+      plugins: { legend: legend('rect'), valueLabels: { format: v => String(v) }, tooltip: tooltip(c => `${c.parsed.x}  ${c.dataset.label.toLowerCase()}`) },
+      scales: { x: { ...valueAxis({ fmt: v => (Number.isInteger(v) ? v : '') }), stacked: true }, y: { ...categoryAxis({ color: TH.text2, size: 12, autoSkip: false }), stacked: true } },
+    },
+  }, `Safety incidents by type. ${sub}`);
+}
+
+function renderChartTable(cardId) {
+  const card = document.getElementById(cardId), host = card.querySelector('.viz-table'), t = tables[cardId];
+  host.textContent = '';
+  if (!t || !card.classList.contains('show-table')) return;
+  const table = document.createElement('table'), thead = table.createTHead(), hr = thead.insertRow(), tb = table.createTBody();
+  const isNum = t.head.map((_, j) => t.rows.length && t.rows.every(r => /^[-$\d.,%+]+$/.test(String(r[j]))));
+  t.head.forEach((h, j) => { const th = document.createElement('th'); th.textContent = h; if (isNum[j]) th.className = 'num'; hr.appendChild(th); });
+  t.rows.forEach(r => { const tr = tb.insertRow(); r.forEach((v, j) => { const td = tr.insertCell(); td.textContent = v; if (isNum[j]) td.className = 'num'; }); });
+  host.appendChild(table);
+}
+
+const CHARTS = [chartRevenue, chartMix, chartOnTime, chartDrivers, chartLanes, chartFacilities, chartFuel, chartTrucks, chartMaintenance, chartSafety];
+function renderCharts() {
+  if (hasChart) {
+    Chart.defaults.font.family = TH.font;
+    Chart.defaults.color = TH.axisInk;
+  }
+  CHARTS.forEach(fn => fn());
+  Object.keys(tables).forEach(renderChartTable);
+}
+document.querySelectorAll('.tbl-btn').forEach(btn => btn.addEventListener('click', () => {
+  const card = btn.closest('.card'), on = !card.classList.contains('show-table');
+  card.classList.toggle('show-table', on);
+  btn.setAttribute('aria-pressed', String(on));
+  btn.textContent = on ? 'Chart' : 'Table';
+  renderChartTable(card.id);
+}));
+
+/* ================= detail tables ================= */
+const DETAIL = {
+  customers: {
+    label: 'Customers', sort: ['gross', -1],
+    note: 'One row per customer account. Names repeat across accounts, so each row is keyed by account ID. Deliveries count toward the year the load was booked.',
+    cols: [['id', 'Account'], ['name', 'Customer'], ['type', 'Type'], ['loads', 'Loads', int], ['gross', 'Gross revenue', usd], ['share', 'Share', v => pct(v, 2)], ['ot', 'On-time', pct], ['det', 'Avg detention (min)', fixed(1)]],
+    rows() {
+      const C = sel('cust'), total = sum(C, 'gross');
+      return [...groupBy(C, 'customer_id').entries()].map(([id, a]) => {
+        const d = dim('customers', id), n = sum(a, 'deliveries');
+        return { id, name: d.name, type: d.type, loads: sum(a, 'loads'), gross: sum(a, 'gross'), share: 100 * sum(a, 'gross') / total, ot: 100 * sum(a, 'on_time') / n, det: sum(a, 'det') / n };
+      });
+    },
+  },
+  lanes: {
+    label: 'Lanes', sort: ['gross', -1],
+    note: 'Revenue per mile = gross revenue ÷ (loads × the lane\'s typical miles).',
+    cols: [['corridor', 'Lane'], ['miles', 'Miles', int], ['loads', 'Loads', int], ['gross', 'Gross revenue', usd], ['perLoad', 'Per load', usd], ['perMile', 'Per mile', v => '$' + v.toFixed(2)], ['ot', 'On-time', pct]],
+    rows() {
+      return [...groupBy(sel('lanes'), 'route_id').entries()].map(([id, a]) => {
+        const d = dim('routes', id), loads = sum(a, 'loads'), gross = sum(a, 'gross');
+        return { id, corridor: d.corridor, miles: d.miles, loads, gross, perLoad: gross / loads, perMile: gross / (loads * d.miles), ot: 100 * sum(a, 'on_time') / sum(a, 'deliveries') };
+      });
+    },
+  },
+  trucks: {
+    label: 'Trucks', sort: ['util', -1], yearOnly: true,
+    note: 'From monthly truck utilization metrics (92 of 120 trucks). Only the year filter applies.',
+    cols: [['id', 'Truck'], ['make', 'Make'], ['model_year', 'Model year'], ['terminal', 'Home terminal'], ['util', 'Utilization', pct], ['mpg', 'Avg MPG', fixed(2)], ['trips', 'Trips', int], ['miles', 'Miles', int], ['revenue', 'Revenue', usd], ['maint', 'Maint. cost', usd], ['down', 'Downtime (h)', int]],
+    rows() {
+      return [...groupBy(sel('trucks_y'), 'truck_id').entries()].map(([id, a]) => {
+        const d = dim('trucks', id), m = sum(a, 'months');
+        return { id, make: d.make, model_year: d.model_year, terminal: d.terminal, util: 100 * sum(a, 'util') / m, mpg: sum(a, 'mpg') / m, trips: sum(a, 'trips'), miles: sum(a, 'miles'), revenue: sum(a, 'revenue'), maint: sum(a, 'maint_cost'), down: sum(a, 'downtime') };
+      });
+    },
+  },
+  drivers: {
+    label: 'Drivers', sort: ['trips', -1],
+    note: 'Built from trips and their delivery events. Trips with no driver assigned are excluded.',
+    cols: [['id', 'Driver'], ['name', 'Name'], ['terminal', 'Home terminal'], ['experience', 'Experience (yrs)', int], ['trips', 'Trips', int], ['miles', 'Miles', int], ['mpg', 'Avg MPG', fixed(2)], ['ot', 'On-time', pct]],
+    rows() {
+      return [...groupBy(sel('drv'), 'driver_id').entries()].map(([id, a]) => {
+        const d = dim('drivers', id), trips = sum(a, 'trips');
+        return { id, name: d.name, terminal: d.terminal, experience: d.experience, trips, miles: sum(a, 'miles'), mpg: sum(a, 'mpg') / trips, ot: 100 * sum(a, 'on_time') / sum(a, 'deliveries') };
+      });
+    },
+  },
+};
+const detail = { tab: 'customers', page: 0, query: '', sort: {} };
+const PAGE = 25;
+function buildTabs() {
+  const host = document.getElementById('tabs');
+  Object.entries(DETAIL).forEach(([key, t]) => {
+    const b = document.createElement('button');
+    b.className = 'tab'; b.type = 'button'; b.setAttribute('role', 'tab'); b.dataset.key = key;
+    b.textContent = t.label + (t.yearOnly ? ' (year only)' : '');
+    b.addEventListener('click', () => { detail.tab = key; detail.page = 0; renderDetail(); });
+    host.appendChild(b);
+    detail.sort[key] = t.sort;
+  });
+}
+function renderDetail() {
+  const spec = DETAIL[detail.tab], [sk, dir] = detail.sort[detail.tab];
+  document.querySelectorAll('#tabs .tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.key === detail.tab)));
+  setText('detail-note', spec.note);
+  const q = detail.query.trim().toLowerCase();
+  let rows = spec.rows();
+  if (q) rows = rows.filter(r => spec.cols.some(([k]) => typeof r[k] === 'string' && r[k].toLowerCase().includes(q)));
+  rows.sort((a, b) => {
+    const x = a[sk], y = b[sk];
+    const c = typeof x === 'string' ? x.localeCompare(y) : (Number.isFinite(x) ? x : -Infinity) - (Number.isFinite(y) ? y : -Infinity);
+    return c * dir;
+  });
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+  detail.page = Math.min(detail.page, pages - 1);
+  const slice = rows.slice(detail.page * PAGE, detail.page * PAGE + PAGE);
+
+  const table = document.createElement('table'), hr = table.createTHead().insertRow(), tb = table.createTBody();
+  spec.cols.forEach(([k, label, fmt]) => {
+    const th = document.createElement('th'), b = document.createElement('button'), arrow = document.createElement('span');
+    b.type = 'button'; b.textContent = label; arrow.className = 'arrow';
+    if (k === sk) { th.setAttribute('aria-sort', dir > 0 ? 'ascending' : 'descending'); arrow.textContent = dir > 0 ? '▲' : '▼'; }
+    b.appendChild(arrow);
+    if (fmt) th.className = 'num';
+    b.addEventListener('click', () => {
+      const [ck, cd] = detail.sort[detail.tab];
+      detail.sort[detail.tab] = [k, ck === k ? -cd : (fmt ? -1 : 1)];
+      detail.page = 0;
+      renderDetail();
+    });
+    th.appendChild(b); hr.appendChild(th);
+  });
+  slice.forEach(r => {
+    const tr = tb.insertRow();
+    spec.cols.forEach(([k, , fmt]) => {
+      const td = tr.insertCell(), v = r[k];
+      td.textContent = v === undefined || v === null ? '–' : fmt ? fmt(v) : v;
+      if (fmt) td.className = 'num';
+    });
+  });
+  const host = document.getElementById('detail');
+  host.textContent = '';
+  host.appendChild(table);
+  setText('pager-info', rows.length ? `Showing ${detail.page * PAGE + 1}–${detail.page * PAGE + slice.length} of ${rows.length}` : 'No matching rows');
+  document.getElementById('prev').disabled = detail.page === 0;
+  document.getElementById('next').disabled = detail.page >= pages - 1;
+}
+document.getElementById('search').addEventListener('input', e => { detail.query = e.target.value; detail.page = 0; renderDetail(); });
+document.getElementById('prev').addEventListener('click', () => { detail.page--; renderDetail(); });
+document.getElementById('next').addEventListener('click', () => { detail.page++; renderDetail(); });
+
+/* ================= filters ================= */
+function fillSelect(id, allLabel, values) {
+  const s = document.getElementById(id);
+  [['all', allLabel], ...values.map(v => [String(v), String(v)])].forEach(([v, t]) => {
+    const o = document.createElement('option'); o.value = v; o.textContent = t; s.appendChild(o);
+  });
+}
+function renderSlice() {
+  const parts = [state.year === 'all' ? 'All years' : state.year, state.lt === 'all' ? 'all load types' : state.lt, state.bt === 'all' ? 'all booking types' : state.bt];
+  setText('slice', 'Showing ' + parts.join(' · '));
+}
+function renderAll() { renderSlice(); renderTiles(); renderCharts(); renderDetail(); }
+function onFilter() {
+  state.year = document.getElementById('f-year').value;
+  state.lt = document.getElementById('f-lt').value;
+  state.bt = document.getElementById('f-bt').value;
+  renderAll();
+}
+['f-year', 'f-lt', 'f-bt'].forEach(id => document.getElementById(id).addEventListener('change', onFilter));
+document.getElementById('f-reset').addEventListener('click', () => {
+  ['f-year', 'f-lt', 'f-bt'].forEach(id => { document.getElementById(id).value = 'all'; });
+  onFilter();
+});
+
+/* ================= static text ================= */
+function buildNotes() {
+  const k = kpis('all');
+  setText('lede', `2022–2024 · ${int(k.loads)} loads · ${compact(k.miles)} miles · computed from ${int(DATA.source_rows)} rows across 14 source tables.`);
+  const notes = [
+    ['KPI formulas follow the gold-layer views in ', ['sql/04_business_views.sql', '../sql/04_business_views.sql'], ' and the definitions in ', ['docs/KPI.md', '../docs/KPI.md'], '. Gross revenue is revenue plus fuel surcharge plus accessorial charges. On-time counts delivery events only, and a delivery is on time when it arrives within ±2 h of its scheduled time.'],
+    [`Delivery events are dated by their scheduled time, as in gold.fact_delivery. ${F.events_2025} events scheduled in January 2025 and ${F.fuel_2025_rows} fuel purchases (${money(F.fuel_2025_cost)}) dated 1–2 January 2025 count toward the "All years" totals only.`],
+    ['Customer and lane tables attribute each delivery to the year its load was booked. Driver tables use the trip dispatch year.'],
+    [`Customer names are not unique (${F.names} names across ${F.accounts} accounts). Tables key on the customer ID, so a name can appear more than once.`],
+    [`Utilization comes from the source's monthly truck metrics, which cover ${F.trucks_with_metrics} of ${F.trucks_total} trucks. ${F.unassigned_share}% of trips have no truck assigned and still count toward revenue, trips and miles.`],
+    ['Fleet utilization, fuel, maintenance and safety records carry no load attributes, so only the Year filter applies to them.'],
+  ];
+  const host = document.getElementById('notes');
+  notes.forEach(parts => {
+    const li = document.createElement('li');
+    parts.forEach(p => {
+      if (Array.isArray(p)) { const a = document.createElement('a'); a.textContent = p[0]; a.href = p[1]; li.appendChild(a); }
+      else li.append(p);
+    });
+    host.appendChild(li);
+  });
+  setText('meta', `Built ${DATA.built} by dashboard/build_dashboard.py from data/*.csv. Charts use Chart.js 4.5.1 from jsDelivr, so an internet connection is needed the first time the file opens.`);
+}
+
+/* ================= boot ================= */
+fillSelect('f-year', 'All years', DATA.years);
+fillSelect('f-lt', 'All load types', DATA.load_types);
+fillSelect('f-bt', 'All booking types', DATA.booking_types);
+setThemeButton();
+readTheme();
+buildTiles();
+buildFindings();
+buildTabs();
+buildNotes();
+if (hasChart) {
+  Chart.register(crosshair, endLabels, valueLabels, band);
+} else {
+  const e = document.getElementById('error');
+  e.hidden = false;
+  e.textContent = 'Charts could not load because Chart.js did not download from cdn.jsdelivr.net. The scorecard, findings, tables and each chart\'s Table view still work.';
+  document.querySelectorAll('.card[id^="card-"]').forEach(c => {
+    c.classList.add('show-table');
+    const b = c.querySelector('.tbl-btn'); if (b) b.hidden = true;
+  });
+}
+renderAll();
+</script>
+</body>
+</html>
