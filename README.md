@@ -8,7 +8,9 @@
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="MIT License" />
 </p>
 
-# Logistics Intelligence Platform
+# Logistics Intelligence Platform 
+> **Download the dataset from Kaggle:**  
+> [*Here*](https://www.kaggle.com/datasets/yogape/logistics-operations-database)
 
 ## A data warehouse for a 120-truck logistics operation — built, executed, and verified on SQL Server.
 
